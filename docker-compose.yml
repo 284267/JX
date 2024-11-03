@@ -1,41 +1,64 @@
 services:
   web:
+    # 使用特定的镜像来构建服务，未使用本地 Dockerfile 构建
     # build: .
     image: dairoot/chatgpt-mirror:dev
 
+    # 读取环境变量文件
     env_file:
       - .env
+
+    # 设置环境变量
     environment:
       - CHATGPT_GATEWAY_URL=http://gateway:8787
+
+    # 映射端口：将宿主机的50002端口映射到容器内的50002端口
     ports:
       - "50002:50002"
+
+    # 设置依赖关系，确保 gateway 服务在 web 服务之前启动
     depends_on:
       - gateway
-    volumes:
-      - chatgpt_mirror_db:/app/backend/db/
-      - ./backend/logs:/app/backend/logs
 
+    # 挂载卷，将本地数据和日志文件映射到容器中
+    volumes:
+      - chatgpt_mirror_db:/app/backend/db/  # 数据库卷
+      - ./backend/logs:/app/backend/logs    # 日志文件挂载
+      - ./frontend/dist:/app/frontend/dist  # 将前端构建的 dist 文件夹挂载到容器内
+
+    # 当容器退出时自动重启
     restart: always
 
   gateway:
+    # 使用指定的镜像来运行网关服务
     image: dairoot/chatgpt-gateway:v0.0.1
-    # ports:
-    #   - "8787:8787"
+
+    # 网关服务的部署配置
     deploy:
-      replicas: 1 # 账号数量多时可+1
+      replicas: 1 # 设置副本数量，账号数量多时可以增加
+
+    # 读取环境变量文件
     env_file:
       - .env
+
+    # 当容器退出时自动重启
     restart: always
+
+    # 设置依赖关系，确保 redis 服务在 gateway 服务之前启动
     depends_on:
       - redis
+
+    # 设置 Redis 的环境变量
     environment:
       - REDIS_URL=redis://redis:6379/0
 
   redis:
+    # 使用 Redis 的最新镜像
     image: redis:latest
-    restart: always
-    # ports:
-    #   - "127.0.0.1:6379:6379"
 
+    # 当容器退出时自动重启
+    restart: always
+
+# 定义命名卷，用于存储数据库数据
 volumes:
   chatgpt_mirror_db:
